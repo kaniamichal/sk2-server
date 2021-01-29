@@ -4,9 +4,13 @@ import java.io.DataOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 import java.util.StringTokenizer;
+import java.util.concurrent.ConcurrentHashMap;
+import javax.swing.DefaultListModel;
 
 /**
  *
@@ -16,6 +20,8 @@ public class Server extends javax.swing.JFrame {
 
     ServerSocket serverSocket;
     HashMap clientCall = new HashMap();
+    //Set<String> clientCall = new HashSet<>();
+   
 
     public Server() {
         try {
@@ -29,20 +35,20 @@ public class Server extends javax.swing.JFrame {
     }
 
     class ClientAccept extends Thread {
-
+        @Override
         public void run() {
             while (true) {
                 try {
                     Socket sock = serverSocket.accept();
                     String inp = new DataInputStream(sock.getInputStream()).readUTF();
+                    //add
+                    DataOutputStream dataOut = new DataOutputStream(sock.getOutputStream());
                     if (clientCall.containsKey(inp)) {
-                        DataOutputStream dataOut = new DataOutputStream(sock.getOutputStream());
                         dataOut.writeUTF("Jesteś już zalogowany");
                     } else {
                         clientCall.put(inp, sock); 
                         serwerTextArea.append(inp + " joined!\n");
                         
-                        DataOutputStream dataOut = new DataOutputStream(sock.getOutputStream());
                         dataOut.writeUTF("");
                         new MessageRead(sock, inp).start();
                         new PrepareClientList().start();
@@ -63,11 +69,13 @@ public class Server extends javax.swing.JFrame {
             this.socket = socket;
             this.ID = ID;
         }
-
+        
+        @Override
         public void run() {
             while (!clientCall.isEmpty()) {
                 try {
                     String insert = new DataInputStream(socket.getInputStream()).readUTF();
+                    System.out.println("wiadomosc z messageRead: " + insert);
                     if (insert.equals("mkoihgteazdcvgyhujb09785542AXTY")) {
                         clientCall.remove(ID);
                         serwerTextArea.append(ID + ": usunięty! \n");
@@ -78,7 +86,8 @@ public class Server extends javax.swing.JFrame {
                             String key = (String) itr.next();
                             if (!key.equalsIgnoreCase(ID)) {
                                 try {
-                                    new DataOutputStream(((Socket) clientCall.get(key)).getOutputStream()).writeUTF(key);
+                                   new DataOutputStream(((Socket) clientCall.get(key)).getOutputStream()).writeUTF(key);
+                                     new DataOutputStream(((Socket) clientCall.get(key)).getOutputStream()).writeUTF(insert);
                                 } catch (Exception ex) {
                                     clientCall.remove(key);
                                     serwerTextArea.append(key + ": usunięty! \n");
@@ -87,14 +96,17 @@ public class Server extends javax.swing.JFrame {
                             }
                         }
                     } 
-                    else if (insert.contains("#4344554@@@@@67667@@")) {
-                        insert = insert.substring(20);
+                    else if (insert.contains("4344554@@@@@67667@@")) {
+                        insert = insert.substring(19);
                         StringTokenizer stringtokenizer = new StringTokenizer(insert, ":");
                         String id = stringtokenizer.nextToken();
                         insert = stringtokenizer.nextToken();
                         try {
                             new DataOutputStream(((Socket) clientCall.get(id)).getOutputStream()).writeUTF("< " + ID + " to " + id + " > " + insert);
+                            System.out.println("male id: " + id);
+                            System.out.println("duze ID: " + ID);
                         } catch (Exception ex) {
+                            clientCall.remove(id);
                             serwerTextArea.append(id + ": usunięty!\n");
                             new PrepareClientList().start();
                         }
@@ -123,25 +135,29 @@ public class Server extends javax.swing.JFrame {
     }
 
     class PrepareClientList extends Thread {
-
+        @Override
         public void run() {
             try {
                 String ids = "";
                 Set k = clientCall.keySet();
+                System.out.println("keySet server: " + k);
                 Iterator itr = k.iterator();
                 while (itr.hasNext()) {
                     String key = (String)itr.next();
+                    System.out.println("iterator: " + key);
                     ids += key + ","; 
-                    clientCall.put(k, itr);
-                 }
-                if (ids.length() != 0) 
-                    ids = ids.substring(0, ids.length() - 1);
                     
-            //     itr = k.iterator();          
+                 }
+                if (ids.length() != 0) {
+                    ids = ids.substring(0, ids.length() - 1);
+                    System.out.println("drugi if: " + ids);
+                }
+                itr = k.iterator();          
                 while (itr.hasNext()) {
                     String key = (String)itr.next();
+                    System.out.println("z while: " + key);
                     try {
-                        new DataOutputStream(((Socket)clientCall.get(key)).getOutputStream()).writeUTF("a to jest z server, prepareClientList() ------ :;.,/=" + ids +"\n");
+                        new DataOutputStream(((Socket)clientCall.get(key)).getOutputStream()).writeUTF(":;.,/=" + ids); //+"\n");
                     } catch (Exception ex) {
                         clientCall.remove(key);
                         serwerTextArea.append(key + ": usunięty!\n");
